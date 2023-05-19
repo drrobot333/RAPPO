@@ -27,20 +27,53 @@ class actor_network(nn.Module):
         
         # print(f"self.adjacency : ", self.adjacency.shape)
 
-        self.pi_mlp1 = nn.Sequential(nn.Linear(1, self.config["node_feature_num"] * int(self.config["node_feature_num"]//2)), nn.ReLU())
-        self.pi_s_ecc1 = NNConv(self.config["node_feature_num"], int(self.config["node_feature_num"]//2), self.pi_mlp1, aggr='mean')
+        self.pi_mlp1 = nn.Sequential(
+            nn.Linear(1, self.config["hidden_feature_num"]), 
+            nn.ReLU(),
+            nn.Linear(self.config["hidden_feature_num"], self.config["hidden_feature_num"]), 
+            nn.ReLU(),
+            nn.Linear(self.config["hidden_feature_num"], self.config["hidden_feature_num"]), 
+            nn.ReLU(),
+            nn.Linear(self.config["hidden_feature_num"], self.config["hidden_feature_num"]), 
+            nn.ReLU(),
+            nn.Linear(self.config["hidden_feature_num"], self.config["hidden_feature_num"]), 
+            nn.ReLU(),
+            nn.Linear(self.config["hidden_feature_num"], self.config["hidden_feature_num"]), 
+            nn.ReLU(),
+            nn.Linear(int(self.config["hidden_feature_num"]), self.config["node_feature_num"] * int(self.config["node_feature_num"])), 
+            nn.ReLU()
+            )
 
-        self.pi_mlp2 = nn.Sequential(nn.Linear(1, int(self.config["node_feature_num"]//2) * int(self.config["node_feature_num"]//2)), nn.ReLU())
-        self.pi_s_ecc2 = NNConv(int(self.config["node_feature_num"]//2), int(self.config["node_feature_num"]//2), self.pi_mlp2, aggr='mean')
+        self.pi_s_ecc1 = NNConv(self.config["node_feature_num"], int(self.config["node_feature_num"]), self.pi_mlp1, aggr='mean')
 
-        self.pi_graph_u_net1 = GraphUNet(int(self.config["node_feature_num"]//2), 50, int(self.config["node_feature_num"]//2), 3, 0.8)
-        self.pi_graph_u_net2 = GraphUNet(int(self.config["node_feature_num"]//2), 50, int(self.config["node_feature_num"]//2), 3, 0.8)
+        self.pi_mlp2 = nn.Sequential(
+            nn.Linear(1, int(self.config["node_feature_num"]) * int(self.config["node_feature_num"])), 
+            nn.ReLU()
+            )
+        self.pi_s_ecc2 = NNConv(int(self.config["node_feature_num"]), int(self.config["node_feature_num"]), self.pi_mlp2, aggr='mean')
+
+        self.pi_graph_u_net1 = GraphUNet(int(self.config["node_feature_num"]), 100, int(self.config["node_feature_num"]), 3, 0.8)
+        self.pi_graph_u_net2 = GraphUNet(int(self.config["node_feature_num"]), 100, int(self.config["node_feature_num"]), 3, 0.8)
 
         self.pi_backbone = nn.Sequential(
-            nn.Linear((int(self.config["node_feature_num"]//2) + self.config["queue_feature_num"]) * 2, self.config["hidden_feature_num"]),
+            nn.Linear((int(self.config["node_feature_num"]) + self.config["queue_feature_num"]) * 2, self.config["hidden_feature_num"]),
             nn.ReLU(),
-            #nn.Linear(hidden_feature_num, hidden_feature_num), # 38부터 적용되는 코드. 38이전은 두 줄 지우고 실행하면됨.
-            #nn.ReLU(),
+            nn.Linear(self.config["hidden_feature_num"], self.config["hidden_feature_num"]), 
+            nn.ReLU(),
+            nn.Linear(self.config["hidden_feature_num"], self.config["hidden_feature_num"]), 
+            nn.ReLU(),
+            nn.Linear(self.config["hidden_feature_num"], self.config["hidden_feature_num"]), 
+            nn.ReLU(),
+            nn.Linear(self.config["hidden_feature_num"], self.config["hidden_feature_num"]), 
+            nn.ReLU(),
+            nn.Linear(self.config["hidden_feature_num"], self.config["hidden_feature_num"]), 
+            nn.ReLU(),
+            nn.Linear(self.config["hidden_feature_num"], self.config["hidden_feature_num"]),
+            nn.ReLU(),
+            nn.Linear(self.config["hidden_feature_num"], self.config["hidden_feature_num"]), 
+            nn.ReLU(),
+            nn.Linear(self.config["hidden_feature_num"], self.config["hidden_feature_num"]), 
+            nn.ReLU(),
         )
 
         """
@@ -61,12 +94,28 @@ class actor_network(nn.Module):
         self.pi_prob_fc = nn.Sequential( 
             nn.Linear(self.config["lstm_hidden_num"], self.config["hidden_feature_num"]), # nodeNum + voidAction
             nn.ReLU(),
+            nn.Linear(self.config["hidden_feature_num"], self.config["hidden_feature_num"]), 
+            nn.ReLU(),
+            nn.Linear(self.config["hidden_feature_num"], self.config["hidden_feature_num"]), 
+            nn.ReLU(),
+            nn.Linear(self.config["hidden_feature_num"], self.config["hidden_feature_num"]), 
+            nn.ReLU(),
             nn.Linear(self.config["hidden_feature_num"], self.config["node_num"] + 1), # 38부터 적용되는 코드. 38이전은 두 줄 지우고 실행하면됨.
         )
 
 
         # prob_fc : 각 액션에 대한 확률.
-        self.v_value_fc = nn.Linear(self.config["hidden_feature_num"], 1)
+        self.v_value_fc = nn.Sequential( 
+            nn.Linear(self.config["hidden_feature_num"], self.config["hidden_feature_num"]), # nodeNum + voidAction
+            nn.ReLU(),
+            nn.Linear(self.config["hidden_feature_num"], self.config["hidden_feature_num"]), 
+            nn.ReLU(),
+            nn.Linear(self.config["hidden_feature_num"], self.config["hidden_feature_num"]), 
+            nn.ReLU(),
+            nn.Linear(self.config["hidden_feature_num"], self.config["hidden_feature_num"]), 
+            nn.ReLU(),
+            nn.Linear(self.config["hidden_feature_num"], 1), # 38부터 적용되는 코드. 38이전은 두 줄 지우고 실행하면됨.
+        )
         
         self.optimizer = optim.Adam(self.parameters(), lr=self.config["learning_rate"])
               
@@ -92,8 +141,8 @@ class actor_network(nn.Module):
         node_feature_1 = F.relu(self.pi_s_ecc1(node_feature_1, adjacency_1, link_feature_1))
         node_feature_1 = F.relu(self.pi_graph_u_net1(node_feature_1, adjacency_1))
 
-        node_feature_1 = F.relu(self.pi_s_ecc2(node_feature_1, adjacency_1, link_feature_1))
-        node_feature_1 = F.relu(self.pi_graph_u_net2(node_feature_1, adjacency_1))
+        # node_feature_1 = F.relu(self.pi_s_ecc2(node_feature_1, adjacency_1, link_feature_1))
+        #node_feature_1 = F.relu(self.pi_graph_u_net2(node_feature_1, adjacency_1))
 
         data_num_1 = len(node_feature_1) // self.config["node_num"]
         
@@ -105,8 +154,8 @@ class actor_network(nn.Module):
         node_feature_2 = F.relu(self.pi_s_ecc1(node_feature_2, adjacency_2, link_feature_2))
         node_feature_2 = F.relu(self.pi_graph_u_net1(node_feature_2, adjacency_2))
 
-        node_feature_2 = F.relu(self.pi_s_ecc2(node_feature_2, adjacency_2, link_feature_2))
-        node_feature_2 = F.relu(self.pi_graph_u_net2(node_feature_2, adjacency_2))
+        # node_feature_2 = F.relu(self.pi_s_ecc2(node_feature_2, adjacency_2, link_feature_2))
+        #node_feature_2 = F.relu(self.pi_graph_u_net2(node_feature_2, adjacency_2))
 
         data_num_2 = len(node_feature_2) // self.config["node_num"]
         
@@ -127,7 +176,7 @@ class actor_network(nn.Module):
 
         inp, h_c = state
 
-        output, _ = self.policy(inp, h_c)
+        output, hidden = self.policy(inp, h_c)
 
         output = self.pi_prob_fc(output)
 
@@ -152,7 +201,7 @@ class actor_network(nn.Module):
 
         # print(entropy.shape)
         
-        return prob, entropy, output
+        return prob, entropy, output, hidden
 
     # advantage network
     def v(self, state):
@@ -163,6 +212,9 @@ class actor_network(nn.Module):
         
     def put_data(self, transition):
         self.data.append(transition)
+
+    def clear_data(self):
+        self.data = []
 
     def set_reward(self, reward):
         self.data[-1][3] = reward
@@ -436,27 +488,30 @@ class actor_network(nn.Module):
                 cur_v = self.v(cur_state)
 
                 td_target = r + gamma_gpu * next_v
+                
                 delta = td_target - cur_v
                 
                 delta = delta.detach().to('cpu').numpy()
                 advantage_lst = []
-                advantage = pre_advantage
+                advantage = 0.0
                 for i, delta_t in enumerate(delta):
                     advantage = gamma_gpu * self.config["lambda"] * advantage + delta_t[0]
                     advantage_lst.append([advantage])
                 # advantage_lst.reverse()
                 advantage_lst = torch.tensor(advantage_lst, dtype=torch.float).cuda()
 
-                pre_advantage = advantage
-
                 v_loss = F.smooth_l1_loss(cur_v , td_target.detach())
+
+                self.optimizer.zero_grad()
+                v_loss.backward()
+                self.optimizer.step()
                 #print("v_loss", v_loss)
                 
                 cur_state = self.gnn([network_batch, job_waiting])
                 cur_state = cur_state.unsqueeze(1)
                 new_state = cur_state.repeat(1, self.config["model_num"], 1)
 
-                pi, current_entropy, outputs = self.pi([new_state, (torch.zeros(1, N_size, self.config["lstm_hidden_num"]).cuda(), torch.zeros(1, N_size, self.config["lstm_hidden_num"]).cuda())])
+                pi, current_entropy, outputs, hidden = self.pi([new_state, (torch.zeros(1, N_size, self.config["lstm_hidden_num"]).cuda(), torch.zeros(1, N_size, self.config["lstm_hidden_num"]).cuda())])
 
 
                 current_entropy = self.entropy_normalize_weight * current_entropy
@@ -483,13 +538,13 @@ class actor_network(nn.Module):
 
                 surr1 = ratio * advantage_lst
                 surr2 = torch.clamp(ratio, 1-self.config["eps_clip"], 1+self.config["eps_clip"]) * advantage_lst
-                pi_loss = - torch.min(surr1, surr2) - self.config["entropy_weight"] * indexed_current_entropy
+                
+                pi_loss = - torch.min(surr1, surr2).view(-1) - self.config["entropy_weight"] * indexed_current_entropy
 
-
-                total_loss = v_loss + pi_loss
+                # total_loss = v_loss + pi_loss
 
                 self.optimizer.zero_grad()
-                total_loss.mean().backward()
+                pi_loss.mean().backward()
                 self.optimizer.step()
 
     def train_net_history(self):
@@ -549,7 +604,10 @@ class actor_network(nn.Module):
 
             td_target = r + gamma_gpu * next_v
             v_loss = F.smooth_l1_loss(cur_v , td_target.detach())
-            #print("v_loss", v_loss)
+
+            self.optimizer.zero_grad()
+            v_loss.mean().backward()
+            self.optimizer.step()
 
             td_target = r + gamma_gpu * next_v
             delta = td_target - cur_v
@@ -585,11 +643,8 @@ class actor_network(nn.Module):
 
             surr1 = ratio * delta.detach()
             surr2 = torch.clamp(ratio, 1-self.config["eps_clip"], 1+self.config["eps_clip"]) * delta.detach()
-            pi_loss = - torch.min(surr1, surr2) - self.config["entropy_weight"] * indexed_current_entropy
-
-            total_loss = v_loss + pi_loss
-
+            pi_loss = - torch.min(surr1, surr2).view(-1) - self.config["entropy_weight"] * indexed_current_entropy
 
             self.optimizer.zero_grad()
-            total_loss.mean().backward()
+            pi_loss.mean().backward()
             self.optimizer.step()
